@@ -11,6 +11,7 @@ type
     # Tracing Working Directory
     twd: string
     pwdstack: seq[string]
+    envs: TableRef[string, string]
 
 proc newBServer(): BServer =
   result.twd = getCurrentDir()
@@ -18,9 +19,18 @@ proc newBServer(): BServer =
   newSeq(result.pwdstack, 0)
   result.pwdstack.add("")
 
+  result.envs = newTable[string,string]()
+
 proc pwd(s: BServer): string =
   s.twd / s.pwdstack[^1]
 
+proc envseq(s: BServer): seq[string] =
+  newSeq(result, s.envs.len)
+
+  var i = 0
+  for key, value in s.envs:
+    result[i] = key & "=" & value
+    i += 1
 
 proc handleCommand(s: var BServer, cmd: seq[string]): int =
   let program = cmd[0]
@@ -39,6 +49,16 @@ proc handleCommand(s: var BServer, cmd: seq[string]): int =
     discard s.pwdstack.pop
     return 0
 
+  of "--env":
+    case args.len
+    of 1:
+      s.envs.del(args[0])
+    of 2:
+      s.envs[args[0]] = args[1]
+    else:
+      return 1
+
+    return 0
   of "--depend":
     # TODO: store this somewhere
     return 0
@@ -50,7 +70,8 @@ proc handleCommand(s: var BServer, cmd: seq[string]): int =
   tracer.pwd = s.pwd
   tracer.cmd = program
   tracer.argv = args
-  tracer.env = @["PATH=" & getEnv("PATH")]
+  tracer.env = s.envseq
+  tracer.env.add("PATH=" & getEnv("PATH"))
   tracer.libpath = getAppDir()
 
   let res = tracer.start
