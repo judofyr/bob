@@ -16,8 +16,12 @@ proc handleCommand(s: var BServer, cmd: seq[string]): int =
   let program = cmd[0]
   let args = cmd[1 .. ^1]
 
-  if program == "--pushd":
+  case program
+  of "--pushd":
     setCurrentDir(args[0])
+    return 0
+  of "--depend":
+    # TODO: store this somewhere
     return 0
 
   echo program, " ", args.join(" ")
@@ -118,7 +122,7 @@ readenv() {
   # and now globally:
   eval $name=\"\$loc$name\"
 
-  # TODO: report it to the server
+  bob --depend "$name" "${!name}"
 }
 
 """.replace("$BOB_BIN", getAppFilename())
