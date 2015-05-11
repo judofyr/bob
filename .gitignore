@@ -1,0 +1,14 @@
+nimcache
+
+# builder
+/build
+
+# debug builds
+/bob
+/libbobpreload.dylib
+
+# release builds
+/pkg
+
+# example output
+/example/output
