@@ -9,7 +9,6 @@ type
     buf: pointer
     len: int
 
-proc write(fd: FileHandle, data: pointer, len: int): int {.importc.}
 proc writev(fd: FileHandle, vecs: ptr IOVec, vecLen: cint): cint {.importc,header:"<sys/uio.h>".}
 proc getcwd(buf: cstring, size: int): cint {.importc,header:"<sys/uio.h>".}
 
