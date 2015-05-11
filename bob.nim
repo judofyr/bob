@@ -1,5 +1,5 @@
 import os, osproc
-import tables
+import tables, sets
 import md5, hashes
 import times
 import sequtils, strutils

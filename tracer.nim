@@ -11,8 +11,8 @@ type
     libpath*: string
 
   TraceResult* = object
-    inputs*: seq[string]
-    outputs*: seq[string]
+    inputs*: HashSet[string]
+    outputs*: HashSet[string]
     status*: cint
 
   TraceData = object
@@ -34,8 +34,8 @@ proc readStr(s: Stream): string =
   return s.readStr(len)
 
 proc processResults(fd: FileHandle, res: var TraceResult) =
-  newSeq(res.inputs, 0)
-  newSeq(res.outputs, 0)
+  init(res.inputs)
+  init(res.outputs)
 
   var file: File
   discard file.open(fd)
@@ -50,20 +50,17 @@ proc processResults(fd: FileHandle, res: var TraceResult) =
         discard
       of Input:
         let str = stream.readStr
-        res.inputs.add(str)
+        res.inputs.incl(str)
       of Output:
         let str = stream.readStr
-        res.outputs.add(str)
+        res.outputs.incl(str)
       of Rename:
         let oldpath = stream.readStr
         let newpath = stream.readStr
 
-        res.outputs.mapIt(
-          if it == oldpath:
-            newpath
-          else:
-            oldpath
-        )
+        if res.outputs.contains(oldpath):
+          res.outputs.excl(oldpath)
+          res.outputs.incl(newpath)
   except:
     return
 
