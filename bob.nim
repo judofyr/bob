@@ -6,6 +6,8 @@ import sequtils, strutils
 
 import tracer
 
+include meta
+
 type
   BServer = object
     # Tracing Working Directory
@@ -191,6 +193,11 @@ of "--server":
     # close pipes
     inpipe.close
     outpipe.close
+of "-v", "--version":
+  echo Name, " v", Version
 else:
-  discard
+  echo Name, " v", Version
+
+  if cmd != "-h" and cmd != "--help":
+    echo "unknown command: ", cmd
 

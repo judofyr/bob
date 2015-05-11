@@ -1,10 +1,10 @@
 import strutils
 import os, osproc
 
+include meta
+
 const dir = "pkg"
-const name = "bob"
-const version = "0.1.0"
-const pkgname = [name, version, hostOS, hostCPU].join("-")
+const pkgname = [Name, Version, hostOS, hostCPU].join("-")
 
 when defined(release):
   const flags = @["-d:release", "--verbosity:0", "--threads:on"]
