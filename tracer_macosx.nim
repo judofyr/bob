@@ -10,7 +10,7 @@ proc prepare(t: var Tracer, data: ptr TraceData, comm: FileHandle) =
 
   let fullEnv = t.env & @[
     "BOB_FD=" & $comm.int,
-    "BOB_PWD=" & t.pwd,
+    "BOB_TWD=" & t.twd,
     "DYLD_FORCE_FLAT_NAMESPACE=1",
     "DYLD_INSERT_LIBRARIES=" & preloadPath,
   ]

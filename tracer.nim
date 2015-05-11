@@ -3,6 +3,7 @@ import sets, sequtils
 
 type
   Tracer* = object
+    twd*: string
     pwd*: string
     cmd*: string
     argv*: seq[string]
@@ -79,6 +80,8 @@ proc start*(t: var Tracer): TraceResult =
     GC_disable()
     # close the reader in the child process
     discard comm[0].close
+    # change directory
+    discard chdir(t.pwd.cstring)
     # and trace it!
     trace(addr(data))
     exitnow(1)

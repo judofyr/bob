@@ -25,12 +25,12 @@ type PathBuf = array[PATH_MAX, char]
 
 var environ {.importc.}: cstringArray
 var bobFd {.threadvar.}: FileHandle
-var bobPwd {.threadvar.}: PathBuf
-var bobPwdLen {.threadvar.}: int
+var bobTwd {.threadvar.}: PathBuf
+var bobTwdLen {.threadvar.}: int
 var inResolve {.threadvar.}: bool
 
 const fdKey = "BOB_FD="
-const pwdKey = "BOB_PWD="
+const twdKey = "BOB_TWD="
 
 proc initBob() =
   if bobFd.cint == 0:
@@ -50,13 +50,13 @@ proc initBob() =
             break
           num = num*10 + digit
 
-      if equalMem(str, pwdKey.cstring, pwdKey.len):
+      if equalMem(str, twdKey.cstring, twdKey.len):
         for j in 0 .. high(int):
-          bobPwd[j] = str[j + pwdKey.len]
-          if bobPwd[j] == '\0':
-            bobPwd[j] = '/'
-            bobPwd[j+1] = '\0'
-            bobPwdLen = j+1
+          bobTwd[j] = str[j + twdKey.len]
+          if bobTwd[j] == '\0':
+            bobTwd[j] = '/'
+            bobTwd[j+1] = '\0'
+            bobTwdLen = j+1
             break
 
     bobFd = FileHandle(num)
@@ -156,9 +156,9 @@ proc resolve(path: cstring, buf: var PathBuf): cstring =
   # make it 0-terminated
   buf[pos] = '\0'
 
-  if equalMem(buf.cstring, bobPwd.cstring, bobPwdLen):
+  if equalMem(buf.cstring, bobTwd.cstring, bobTwdLen):
     result = cast[cstring](
-      cast[int](buf) + bobPwdLen
+      cast[int](buf) + bobTwdLen
     )
 
   inResolve = false

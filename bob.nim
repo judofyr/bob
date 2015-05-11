@@ -8,9 +8,19 @@ import tracer
 
 type
   BServer = object
+    # Tracing Working Directory
+    twd: string
+    pwdstack: seq[string]
 
 proc newBServer(): BServer =
-  discard
+  result.twd = getCurrentDir()
+
+  newSeq(result.pwdstack, 0)
+  result.pwdstack.add("")
+
+proc pwd(s: BServer): string =
+  s.twd / s.pwdstack[^1]
+
 
 proc handleCommand(s: var BServer, cmd: seq[string]): int =
   let program = cmd[0]
@@ -18,8 +28,17 @@ proc handleCommand(s: var BServer, cmd: seq[string]): int =
 
   case program
   of "--pushd":
-    setCurrentDir(args[0])
+    let newpwd = s.pwdstack[^1] / args[0]
+    s.pwdstack.add(newpwd)
     return 0
+
+  of "--popd":
+    if s.pwdstack.len == 1:
+      return 1
+
+    discard s.pwdstack.pop
+    return 0
+
   of "--depend":
     # TODO: store this somewhere
     return 0
@@ -27,7 +46,8 @@ proc handleCommand(s: var BServer, cmd: seq[string]): int =
   echo program, " ", args.join(" ")
 
   var tracer: Tracer
-  tracer.pwd = getCurrentDir()
+  tracer.twd = s.twd
+  tracer.pwd = s.pwd
   tracer.cmd = program
   tracer.argv = args
   tracer.env = @["PATH=" & getEnv("PATH")]
