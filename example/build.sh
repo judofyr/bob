@@ -4,7 +4,7 @@ eval "`bob --start || echo exit`"
 
 readenv CFLAGS -O3 -std=c99
 
-bob mkdir -p output
+bob --mkdir output
 
 bob --pushd output
 

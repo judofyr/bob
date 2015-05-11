@@ -37,6 +37,10 @@ proc handleCommand(s: var BServer, cmd: seq[string]): int =
   let args = cmd[1 .. ^1]
 
   case program
+  of "--mkdir":
+    createDir(s.pwd / args[0])
+    return 0
+
   of "--pushd":
     let newpwd = s.pwdstack[^1] / args[0]
     s.pwdstack.add(newpwd)
