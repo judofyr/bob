@@ -11,7 +11,7 @@ type
 
 proc write(fd: FileHandle, data: pointer, len: int): int {.importc.}
 proc writev(fd: FileHandle, vecs: ptr IOVec, vecLen: cint): cint {.importc,header:"<sys/uio.h>".}
-proc realpath(name, resolved: cstring): cstring {.importc,header:"<stdlib.h>".}
+proc getcwd(buf: cstring, size: int): cint {.importc,header:"<sys/uio.h>".}
 
 proc dlsym(handler: pointer, symbol: cstring): pointer {.importc,header:"<dlfcn.h>".}
 var RTLD_NEXT {.importc,header:"<dlfcn.h>"}: pointer
@@ -100,31 +100,69 @@ type constcstring {.importc:"const char*".} = object
 template tocstring(s: constcstring): cstring = cast[cstring](s)
 
 proc resolve(path: cstring, buf: var PathBuf): cstring =
-  if inResolve:
-    return nil
+  if inResolve: return nil
+
+  const SepChar = {'/', '\0'}
 
   inResolve = true
 
-  let resolved = realpath(path, buf)
-  if resolved.isNil:
-    inResolve = false
-    return nil
+  # Find the current directory
+  discard getcwd(buf, buf.len)
 
-  let resolvedLen = resolved.len
-  if resolvedLen < bobPwdLen:
-    inResolve = false
-    return nil
+  # Start at the last byte
+  let pathLen = path.len
+  var pos = buf.cstring.len
 
-  if not equalMem(resolved, bobPwd.cstring, bobPwdLen):
-    inResolve = false
-    return nil
+  var i = 0
 
-  result = cast[cstring](
-    cast[int](resolved) + bobPwdLen
-  )
+  if path[0] == '/':
+    # absolute path
+    pos = 0
+
+  while i < pathLen:
+    if path[i] == '\0':
+      break
+
+    # ignore any extra slashes
+    if path[i] == '/':
+      i += 1
+      continue
+
+    # ignore single dots
+    if path[i] == '.' and path[i+1] in SepChar:
+      i += 2
+      continue
+
+    # handle parent dir
+    if path[i] == '.' and path[i+1] == '.' and path[i+2] in SepChar:
+      # walk one directory up
+      while pos > 0:
+        pos -= 1
+        if buf[pos] in SepChar:
+          break
+
+      i += 3
+      continue
+
+    # add a slash
+    buf[pos] = '/'
+    pos += 1
+
+    # then copy over everything until the next component:
+    while i < pathLen and path[i] notin SepChar:
+      buf[pos] = path[i]
+      pos += 1
+      i += 1
+
+  # make it 0-terminated
+  buf[pos] = '\0'
+
+  if equalMem(buf.cstring, bobPwd.cstring, bobPwdLen):
+    result = cast[cstring](
+      cast[int](buf) + bobPwdLen
+    )
 
   inResolve = false
-
 
 # Aaand let's start:
 type
@@ -196,10 +234,11 @@ proc rename(oldpath, newpath: constcstring): cint {.exportc.} =
     oldpath = oldpath.tocstring
     newpath = newpath.tocstring
 
+  result = renameNext(oldpath, newpath)
+
   var oldbuf, newbuf: PathBuf
 
   let oldres = resolve(oldpath, oldbuf)
-  result = renameNext(oldpath, newpath)
   let newres = resolve(newpath, newbuf)
 
   if not oldres.isNil and not newres.isNil:
