@@ -108,11 +108,17 @@ for var in $(env | cut -f 1 -d =); do
   fi
 done
 
-getenv() {
-  local name="env$1"
+readenv() {
+  local name="$1"
+  local var="env$name"
   shift
-  # TODO: report dependency to Bach
-  echo "${!name-$@}"
+
+  # declare it locally (and handle spaces properly):
+  declare "loc$name"="${!var-"$*"}"
+  # and now globally:
+  eval $name=\"\$loc$name\"
+
+  # TODO: report it to the server
 }
 
 """.replace("$BOB_BIN", getAppFilename())
