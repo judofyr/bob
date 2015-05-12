@@ -127,6 +127,7 @@ mkfifo "$BOB_TMP.out"
 
 BOB_DIR=$(dirname "${BASH_SOURCE[0]}")
 cd "$BOB_DIR"
+BOB_DIR="$(pwd)"
 
 # Start the Bach server in the background.
 "$BOB_BIN" --server "$BOB_TMP" &
@@ -134,6 +135,17 @@ BOB_SERVER=$!
 
 # Override the bob command to pass commands to the server
 bob() {
+  if [ "$1" = "--start" ]; then
+    return
+  fi
+
+  if [ "$1" = "--include" ]; then
+    pushd "$BOB_DIR" >/dev/null
+    source "$2"
+    popd "$BOB_DIR" >/dev/null
+    return
+  fi
+
   # send command in a single packet
   (
     for var in "$@"; do
