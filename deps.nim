@@ -11,8 +11,8 @@ type
     path: string
     mtime: Time
     md5: MD5Digest
-    outputFrom: BCommandId
-    inputFor: seq[BCommandId]
+    outputFrom: seq[BCommandId]
+    inputTo: seq[BCommandId]
 
   BCommandId = distinct int32
 
@@ -41,7 +41,8 @@ proc file*(deps: var BDeps, path: string): BFile =
   else:
     new(result)
     result.path = path
-    newSeq(result.inputFor, 0)
+    newSeq(result.inputTo, 0)
+    newSeq(result.outputFrom, 0)
     deps.files[path] = result
 
 template files*(deps: var BDeps, iter: expr): seq[BFile] =
@@ -53,14 +54,13 @@ proc setInputs*(cmd: BCommand, files: seq[BFile]) =
   doAssert(cmd.inputs.isNil)
   cmd.inputs = files
   for file in files:
-    file.inputFor.add(cmd.id)
+    file.inputTo.add(cmd.id)
 
 proc setOutputs*(cmd: BCommand, files: seq[BFile]) =
   doAssert(cmd.outputs.isNil)
   cmd.outputs = files
   for file in files:
-    # TODO: how to handle conflicts?
-    file.outputFrom = cmd.id
+    file.outputFrom.add(cmd.id)
 
 proc commandId*(cmd: BCommand): int32 =
   if not cmd.isNil:
@@ -106,10 +106,11 @@ proc write*(deps: var BDeps, filename: string) =
     s.write(file.path)
 
     # Write outputFrom
-    s.write(file.outputFrom)
+    s.write(file.outputFrom.len.int32)
+    for cmdId in file.outputFrom:
+      s.write(cmdId)
 
-    # Write inputFor
-    s.write(file.inputFor.len.int32)
-    for cmdId in file.inputFor:
+    s.write(file.inputTo.len.int32)
+    for cmdId in file.inputTo:
       s.write(cmdId)
 
