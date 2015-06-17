@@ -105,6 +105,9 @@ proc write*(deps: var BDeps, filename: string) =
     s.write(file.path.len.int32)
     s.write(file.path)
 
+    s.write(file.mtime)
+    s.write(file.md5)
+
     # Write outputFrom
     s.write(file.outputFrom.len.int32)
     for cmdId in file.outputFrom:
@@ -124,6 +127,13 @@ proc readFiles*(deps: var BDeps, filename: string) =
   for i in 0 .. <fileCount:
     let path = s.readStr(s.readInt32)
     let file = deps.file(path)
+
+    proc read[T](s: Stream, res: var T) =
+      let nread = s.readData(addr(res), sizeof(T))
+      doAssert(nread == sizeof(T))
+
+    s.read(file.mtime)
+    s.read(file.md5)
 
     for j in 0 .. <s.readInt32:
       file.outputFrom.add(BCommandId(s.readInt32))
