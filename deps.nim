@@ -1,4 +1,4 @@
-import times, md5
+import times, md5, os
 import tables
 import streams
 
@@ -9,6 +9,8 @@ type
 
   BFile* = ref object
     path: string
+    mtime: Time
+    md5: MD5Digest
     outputFrom: BCommandId
     inputFor: seq[BCommandId]
 
@@ -63,6 +65,28 @@ proc setOutputs*(cmd: BCommand, files: seq[BFile]) =
 proc commandId*(cmd: BCommand): int32 =
   if not cmd.isNil:
     result = cmd.id.int32
+
+proc md5file*(filename: string): MD5Digest =
+  var ctx: MD5Context
+  md5init(ctx)
+
+  var file: File
+
+  if not file.open(filename, fmRead):
+    doAssert(false)
+
+  var buffer: array[4096, char]
+  while true:
+    let n = file.readChars(buffer, 0, buffer.len)
+    if n == 0: break
+    md5update(ctx, buffer.cstring, n)
+
+  md5final(ctx, result)
+
+proc sync*(deps: var BDeps) =
+  for file in deps.files.values:
+    file.mtime = file.path.getLastModificationTime
+    file.md5 = file.path.md5file
 
 ## File format
 

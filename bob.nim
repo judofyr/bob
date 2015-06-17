@@ -42,6 +42,7 @@ proc envseq(s: BServer): seq[string] =
     i += 1
 
 proc persist(s: var BServer) =
+  s.deps.sync
   s.deps.write(s.buildFile & ".bobfiles")
 
 proc handleCommand(s: var BServer, cmd: seq[string]): int =
