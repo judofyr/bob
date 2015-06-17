@@ -91,7 +91,7 @@ proc sync*(deps: var BDeps) =
 ## File format
 
 const fileMagic = "BOB!"
-const fileVersion = 1.uint8
+const fileVersion = 1.int8
 
 proc write*(deps: var BDeps, filename: string) =
   let s = newFileStream(filename, fmWrite)
@@ -113,4 +113,21 @@ proc write*(deps: var BDeps, filename: string) =
     s.write(file.inputTo.len.int32)
     for cmdId in file.inputTo:
       s.write(cmdId)
+
+proc readFiles*(deps: var BDeps, filename: string) =
+  let s = newFileStream(filename, fmRead)
+  doAssert(s.readStr(4) == fileMagic)
+  doAssert(s.readInt8 == fileVersion)
+
+  let fileCount = s.readInt32
+
+  for i in 0 .. <fileCount:
+    let path = s.readStr(s.readInt32)
+    let file = deps.file(path)
+
+    for j in 0 .. <s.readInt32:
+      file.outputFrom.add(BCommandId(s.readInt32))
+
+    for j in 0 .. <s.readInt32:
+      file.inputTo.add(BCommandId(s.readInt32))
 

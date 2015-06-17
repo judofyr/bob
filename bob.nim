@@ -30,6 +30,8 @@ proc newBServer(buildFile: string): BServer =
 
   initDeps(result.deps)
 
+  result.deps.readFiles(buildFile & ".bobfiles")
+
 proc pwd(s: BServer): string =
   s.twd / s.pwdstack[^1]
 
