@@ -85,7 +85,7 @@ proc handleCommand(s: var BServer, cmd: seq[string]): int =
 
   echo program, " ", args.join(" ")
 
-  let cmd = newCommand()
+  let cmd = s.deps.newCommand
   cmd.program = program
   cmd.args = args
   cmd.pwd = s.pwd
@@ -106,8 +106,8 @@ proc handleCommand(s: var BServer, cmd: seq[string]): int =
   echo "status: ", res.status.int
   echo ""
 
-  cmd.inputs = res.inputs.mapIt(BFile, s.deps.file(it))
-  cmd.outputs = res.outputs.mapIt(BFile, s.deps.file(it))
+  cmd.setInputs(s.deps.files(res.inputs))
+  cmd.setOutputs(s.deps.files(res.outputs))
 
   return res.status.int
 

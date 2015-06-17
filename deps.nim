@@ -9,8 +9,11 @@ type
 
   BFile* = ref object
     path: string
+    outputFrom: BCommand
+    inputFor: seq[BCommand]
 
   BCommand* = ref object
+    id: int
     program*: string
     args*: seq[string]
     pwd*: string
@@ -19,7 +22,10 @@ type
     inputs*: seq[BFile]
     outputs*: seq[BFile]
 
-proc newCommand*: BCommand = new(result)
+proc newCommand*(deps: var BDeps): BCommand =
+  new(result)
+  result.id = deps.commands.len
+  deps.commands.add(result)
 
 proc initDeps*(deps: var BDeps) =
   deps.files = newTable[string, BFile]()
@@ -31,10 +37,26 @@ proc file*(deps: var BDeps, path: string): BFile =
   else:
     new(result)
     result.path = path
+    newSeq(result.inputFor, 0)
     deps.files[path] = result
 
-proc addCommand*(deps: var BDeps, cmd: BCommand) =
-  deps.commands.add(cmd)
+template files*(deps: var BDeps, iter: expr): seq[BFile] =
+  var result = newSeq[BFile](0)
+  for path in iter: result.add(deps.file(path))
+  result
+
+proc setInputs*(cmd: BCommand, files: seq[BFile]) =
+  doAssert(cmd.inputs.isNil)
+  cmd.inputs = files
+  for file in files:
+    file.inputFor.add(cmd)
+
+proc setOutputs*(cmd: BCommand, files: seq[BFile]) =
+  doAssert(cmd.outputs.isNil)
+  cmd.outputs = files
+  for file in files:
+    # TODO: how to handle conflicts?
+    file.outputFrom = cmd
 
 ## File format
 
@@ -46,10 +68,10 @@ proc write*(deps: var BDeps, filename: string) =
   s.write(fileMagic)
   s.write(fileVersion)
 
-  for path in deps.files.keys:
-    let size = path.len.int32
+  for file in deps.files.values:
+    let size = file.path.len.int32
     s.write(size)
-    s.write(path)
+    s.write(file.path)
 
   let zero = 0.int32
   s.write(zero)
