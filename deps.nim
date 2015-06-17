@@ -58,6 +58,10 @@ proc setOutputs*(cmd: BCommand, files: seq[BFile]) =
     # TODO: how to handle conflicts?
     file.outputFrom = cmd
 
+proc commandId*(cmd: BCommand): int32 =
+  if not cmd.isNil:
+    result = cmd.id.int32
+
 ## File format
 
 const fileMagic = "BOB!"
@@ -68,11 +72,18 @@ proc write*(deps: var BDeps, filename: string) =
   s.write(fileMagic)
   s.write(fileVersion)
 
+  s.write(deps.files.len.int32)
+
   for file in deps.files.values:
-    let size = file.path.len.int32
-    s.write(size)
+    # Write length-encoded string
+    s.write(file.path.len.int32)
     s.write(file.path)
 
-  let zero = 0.int32
-  s.write(zero)
+    # Write outputFrom
+    s.write(file.outputFrom.commandId)
+
+    # Write inputFor
+    s.write(file.inputFor.len.int32)
+    for cmd in file.inputFor:
+      s.write(cmd.commandId)
 
