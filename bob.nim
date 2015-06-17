@@ -43,6 +43,9 @@ proc handleCommand(s: var BServer, cmd: seq[string]): int =
   let args = cmd[1 .. ^1]
 
   case program
+  of "--kill":
+    quit()
+
   of "--mkdir":
     createDir(s.pwd / args[0])
     return 0
@@ -121,7 +124,9 @@ bob_cleanup() {
   fi
 
   if [ -n "${BOB_SERVER-}" ]; then
-    kill $BOB_SERVER
+    # This should *always* fail
+    bob --kill || true
+    # TODO: Can we wait with timeout here?
     wait $BOB_SERVER 2>/dev/null
   fi
 
