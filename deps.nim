@@ -9,11 +9,13 @@ type
 
   BFile* = ref object
     path: string
-    outputFrom: BCommand
-    inputFor: seq[BCommand]
+    outputFrom: BCommandId
+    inputFor: seq[BCommandId]
+
+  BCommandId = distinct int32
 
   BCommand* = ref object
-    id: int
+    id: BCommandId
     program*: string
     args*: seq[string]
     pwd*: string
@@ -24,7 +26,7 @@ type
 
 proc newCommand*(deps: var BDeps): BCommand =
   new(result)
-  result.id = deps.commands.len
+  result.id = BCommandId(deps.commands.len)
   deps.commands.add(result)
 
 proc initDeps*(deps: var BDeps) =
@@ -49,14 +51,14 @@ proc setInputs*(cmd: BCommand, files: seq[BFile]) =
   doAssert(cmd.inputs.isNil)
   cmd.inputs = files
   for file in files:
-    file.inputFor.add(cmd)
+    file.inputFor.add(cmd.id)
 
 proc setOutputs*(cmd: BCommand, files: seq[BFile]) =
   doAssert(cmd.outputs.isNil)
   cmd.outputs = files
   for file in files:
     # TODO: how to handle conflicts?
-    file.outputFrom = cmd
+    file.outputFrom = cmd.id
 
 proc commandId*(cmd: BCommand): int32 =
   if not cmd.isNil:
@@ -80,10 +82,10 @@ proc write*(deps: var BDeps, filename: string) =
     s.write(file.path)
 
     # Write outputFrom
-    s.write(file.outputFrom.commandId)
+    s.write(file.outputFrom)
 
     # Write inputFor
     s.write(file.inputFor.len.int32)
-    for cmd in file.inputFor:
-      s.write(cmd.commandId)
+    for cmdId in file.inputFor:
+      s.write(cmdId)
 
