@@ -5,9 +5,9 @@ type
   Tracer* = object
     twd*: string
     pwd*: string
-    cmd*: string
-    argv*: seq[string]
-    env*: seq[string]
+    program*: string
+    args*: seq[string]
+    envs*: seq[string]
     libpath*: string
 
   TraceResult* = object
@@ -99,9 +99,9 @@ else:
 
 when isMainModule:
   var t: Tracer
-  t.cmd = "bash"
-  t.argv = @["-c", "env"]
-  t.env = @["PATH=" & getEnv("PATH")]
-  t.env = @[]
+  t.program = "bash"
+  t.args = @["-c", "env"]
+  t.envs = @["PATH=" & getEnv("PATH")]
+  t.envs = @[]
   discard t.start
 

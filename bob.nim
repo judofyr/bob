@@ -5,6 +5,7 @@ import times
 import sequtils, strutils
 
 import tracer
+import deps
 
 include meta
 
@@ -14,6 +15,7 @@ type
     twd: string
     pwdstack: seq[string]
     envs: TableRef[string, string]
+    deps: BDeps
 
 proc newBServer(): BServer =
   result.twd = getCurrentDir()
@@ -22,6 +24,8 @@ proc newBServer(): BServer =
   result.pwdstack.add("")
 
   result.envs = newTable[string,string]()
+
+  initDeps(result.deps)
 
 proc pwd(s: BServer): string =
   s.twd / s.pwdstack[^1]
@@ -71,13 +75,19 @@ proc handleCommand(s: var BServer, cmd: seq[string]): int =
 
   echo program, " ", args.join(" ")
 
+  let cmd = newCommand()
+  cmd.program = program
+  cmd.args = args
+  cmd.pwd = s.pwd
+  cmd.envs = s.envseq
+
   var tracer: Tracer
   tracer.twd = s.twd
-  tracer.pwd = s.pwd
-  tracer.cmd = program
-  tracer.argv = args
-  tracer.env = s.envseq
-  tracer.env.add("PATH=" & getEnv("PATH"))
+  tracer.pwd = cmd.pwd
+  tracer.program = cmd.program
+  tracer.args = cmd.args
+  tracer.envs = cmd.envs
+  tracer.envs.add("PATH=" & getEnv("PATH"))
   tracer.libpath = getAppDir()
 
   let res = tracer.start
@@ -85,6 +95,10 @@ proc handleCommand(s: var BServer, cmd: seq[string]): int =
   echo "outputs: ", res.outputs
   echo "status: ", res.status.int
   echo ""
+
+  cmd.inputs = res.inputs.mapIt(BFile, s.deps.file(it))
+  cmd.outputs = res.outputs.mapIt(BFile, s.deps.file(it))
+
   return res.status.int
 
 ## Main module
