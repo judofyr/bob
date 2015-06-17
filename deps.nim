@@ -88,6 +88,28 @@ proc sync*(deps: var BDeps) =
     file.mtime = file.path.getLastModificationTime
     file.md5 = file.path.md5file
 
+# These sync-procs returns true if the file has *changed*
+
+proc syncMD5(file: BFile): bool =
+  let md5 = file.path.md5file
+  if file.md5 == md5:
+    result = false
+  else:
+    file.md5 = md5
+    result = true
+
+proc syncFull*(file: BFile): bool =
+  file.mtime = file.path.getLastModificationTime
+  result = file.syncMD5
+
+proc syncQuick*(file: BFile): bool =
+  let mtime = file.path.getLastModificationTime
+  if file.mtime == mtime:
+    result = false
+  else:
+    file.mtime = mtime
+    result = file.syncMD5
+
 ## File format
 
 const fileMagic = "BOB!"
