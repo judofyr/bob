@@ -12,12 +12,15 @@ include meta
 type
   BServer = object
     # Tracing Working Directory
+    buildFile: string
     twd: string
     pwdstack: seq[string]
     envs: TableRef[string, string]
     deps: BDeps
 
-proc newBServer(): BServer =
+proc newBServer(buildFile: string): BServer =
+  result.buildFile = buildFile
+
   result.twd = getCurrentDir()
 
   newSeq(result.pwdstack, 0)
@@ -38,12 +41,16 @@ proc envseq(s: BServer): seq[string] =
     result[i] = key & "=" & value
     i += 1
 
+proc persist(s: var BServer) =
+  s.deps.write(s.buildFile & ".bobfiles")
+
 proc handleCommand(s: var BServer, cmd: seq[string]): int =
   let program = cmd[0]
   let args = cmd[1 .. ^1]
 
   case program
   of "--kill":
+    s.persist
     quit()
 
   of "--mkdir":
@@ -145,11 +152,12 @@ mkfifo "$BOB_TMP.in"
 mkfifo "$BOB_TMP.out"
 
 BOB_DIR=$(dirname "${BASH_SOURCE[0]}")
+BOB_FILE="${BASH_SOURCE[0]##*/}"
 cd "$BOB_DIR"
 BOB_DIR="$(pwd)"
 
 # Start the Bach server in the background.
-"$BOB_BIN" --server "$BOB_TMP" &
+"$BOB_BIN" --server "$BOB_TMP" "$BOB_DIR/$BOB_FILE" &
 BOB_SERVER=$!
 
 # Override the bob command to pass commands to the server
@@ -207,7 +215,7 @@ readenv() {
 
 of "--server":
   var inpipe, outpipe: File
-  var server = newBServer()
+  var server = newBServer(argv[2])
 
   while true:
     # open pipes

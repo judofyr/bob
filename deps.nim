@@ -1,5 +1,6 @@
 import times, md5
 import tables
+import streams
 
 type
   BDeps* = object
@@ -34,4 +35,22 @@ proc file*(deps: var BDeps, path: string): BFile =
 
 proc addCommand*(deps: var BDeps, cmd: BCommand) =
   deps.commands.add(cmd)
+
+## File format
+
+const fileMagic = "BOB!"
+const fileVersion = 1.uint8
+
+proc write*(deps: var BDeps, filename: string) =
+  let s = newFileStream(filename, fmWrite)
+  s.write(fileMagic)
+  s.write(fileVersion)
+
+  for path in deps.files.keys:
+    let size = path.len.int32
+    s.write(size)
+    s.write(path)
+
+  let zero = 0.int32
+  s.write(zero)
 
