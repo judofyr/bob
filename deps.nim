@@ -4,15 +4,17 @@ import streams
 
 type
   BDeps* = object
-    files: TableRef[string, BFile]
+    files: seq[BFile]
+    fileCache: TableRef[string, BFile]
     commands: seq[BCommand]
 
+  BFileId = distinct int32
+
   BFile* = ref object
+    id: BFileId
     path: string
     mtime: Time
     md5: MD5Digest
-    outputFrom: seq[BCommandId]
-    inputTo: seq[BCommandId]
 
   BCommandId = distinct int32
 
@@ -32,18 +34,19 @@ proc newCommand*(deps: var BDeps): BCommand =
   deps.commands.add(result)
 
 proc initDeps*(deps: var BDeps) =
-  deps.files = newTable[string, BFile]()
+  newSeq(deps.files, 0)
   newSeq(deps.commands, 0)
+  deps.fileCache = newTable[string, BFile]()
 
 proc file*(deps: var BDeps, path: string): BFile =
-  if deps.files.hasKey(path):
-    result = deps.files[path]
+  if deps.fileCache.hasKey(path):
+    result = deps.fileCache[path]
   else:
     new(result)
+    result.id = BFileId(deps.files.len)
     result.path = path
-    newSeq(result.inputTo, 0)
-    newSeq(result.outputFrom, 0)
-    deps.files[path] = result
+    deps.fileCache[path] = result
+    deps.files.add(result)
 
 template files*(deps: var BDeps, iter: expr): seq[BFile] =
   var result = newSeq[BFile](0)
@@ -53,14 +56,10 @@ template files*(deps: var BDeps, iter: expr): seq[BFile] =
 proc setInputs*(cmd: BCommand, files: seq[BFile]) =
   doAssert(cmd.inputs.isNil)
   cmd.inputs = files
-  for file in files:
-    file.inputTo.add(cmd.id)
 
 proc setOutputs*(cmd: BCommand, files: seq[BFile]) =
   doAssert(cmd.outputs.isNil)
   cmd.outputs = files
-  for file in files:
-    file.outputFrom.add(cmd.id)
 
 proc commandId*(cmd: BCommand): int32 =
   if not cmd.isNil:
@@ -84,7 +83,7 @@ proc md5file*(filename: string): MD5Digest =
   md5final(ctx, result)
 
 proc sync*(deps: var BDeps) =
-  for file in deps.files.values:
+  for file in deps.files:
     file.mtime = file.path.getLastModificationTime
     file.md5 = file.path.md5file
 
@@ -122,7 +121,7 @@ proc write*(deps: var BDeps, filename: string) =
 
   s.write(deps.files.len.int32)
 
-  for file in deps.files.values:
+  for file in deps.files:
     # Write length-encoded string
     s.write(file.path.len.int32)
     s.write(file.path)
@@ -130,17 +129,10 @@ proc write*(deps: var BDeps, filename: string) =
     s.write(file.mtime)
     s.write(file.md5)
 
-    # Write outputFrom
-    s.write(file.outputFrom.len.int32)
-    for cmdId in file.outputFrom:
-      s.write(cmdId)
-
-    s.write(file.inputTo.len.int32)
-    for cmdId in file.inputTo:
-      s.write(cmdId)
-
 proc readFiles*(deps: var BDeps, filename: string) =
   let s = newFileStream(filename, fmRead)
+  if s.isNil: return
+
   doAssert(s.readStr(4) == fileMagic)
   doAssert(s.readInt8 == fileVersion)
 
@@ -156,10 +148,4 @@ proc readFiles*(deps: var BDeps, filename: string) =
 
     s.read(file.mtime)
     s.read(file.md5)
-
-    for j in 0 .. <s.readInt32:
-      file.outputFrom.add(BCommandId(s.readInt32))
-
-    for j in 0 .. <s.readInt32:
-      file.inputTo.add(BCommandId(s.readInt32))
 
